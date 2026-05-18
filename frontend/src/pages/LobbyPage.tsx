@@ -29,11 +29,14 @@ export function LobbyPage() {
 
   return (
     <section className="panel placeholder-page">
-      <h1>Lobby</h1>
-      <p>
-        Room <strong>{room.code}</strong> is available for the scaffolded flow. Open the game screen when you want to
-        inspect the placeholder gameplay areas.
-      </p>
+      <div className="page-heading">
+        <span className="section-kicker">Room {room.code}</span>
+        <h1>Lobby</h1>
+        <p>
+          This room is available for the scaffolded flow. Open the game screen to inspect the placeholder gameplay
+          areas.
+        </p>
+      </div>
 
       <div className="summary-grid">
         <article className="hero__card">
@@ -45,7 +48,7 @@ export function LobbyPage() {
               {room.participants.map((participant) => (
                 <li key={participant.id}>
                   <span>{participant.name}</span>
-                  <span>joined</span>
+                  <span className="player-list__meta">joined</span>
                 </li>
               ))}
             </ul>
@@ -54,7 +57,7 @@ export function LobbyPage() {
 
         <article className="hero__card">
           <h2>Status</h2>
-          <p>{isLoading ? "Refreshing room state..." : "Lobby data is loaded from the room-state endpoint."}</p>
+          <p className="status-line">{isLoading ? "Refreshing room state..." : "Room endpoint connected"}</p>
           <p>{error ?? refreshError ?? "Game behavior remains scaffolded in this starter."}</p>
         </article>
       </div>

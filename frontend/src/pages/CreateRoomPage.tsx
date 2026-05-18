@@ -22,8 +22,11 @@ export function CreateRoomPage() {
 
   return (
     <section className="panel placeholder-page">
-      <h1>Create Room</h1>
-      <p>Pick a player name, create a room, and continue into the lobby.</p>
+      <div className="page-heading">
+        <span className="section-kicker">New lobby</span>
+        <h1>Create Room</h1>
+        <p>Pick a player name, create a room, and continue into the lobby.</p>
+      </div>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span>Player name</span>
@@ -38,6 +41,9 @@ export function CreateRoomPage() {
         <div className="button-row">
           <button className="button button--primary" type="submit">
             Create and Continue
+          </button>
+          <button className="button button--secondary" type="button" onClick={() => navigate("/")}>
+            Back
           </button>
         </div>
       </form>

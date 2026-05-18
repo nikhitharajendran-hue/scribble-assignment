@@ -23,8 +23,11 @@ export function JoinRoomPage() {
 
   return (
     <section className="panel placeholder-page">
-      <h1>Join Room</h1>
-      <p>Enter your player name and the room code to join an existing lobby.</p>
+      <div className="page-heading">
+        <span className="section-kicker">Existing lobby</span>
+        <h1>Join Room</h1>
+        <p>Enter your player name and the room code to join an existing lobby.</p>
+      </div>
       <form className="form" onSubmit={handleSubmit}>
         <label className="form__field">
           <span>Player name</span>
@@ -49,6 +52,9 @@ export function JoinRoomPage() {
         <div className="button-row">
           <button className="button button--primary" type="submit">
             Join Lobby
+          </button>
+          <button className="button button--secondary" type="button" onClick={() => navigate("/")}>
+            Back
           </button>
         </div>
       </form>

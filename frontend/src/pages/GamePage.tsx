@@ -23,10 +23,11 @@ export function GamePage() {
 
   return (
     <section className="panel placeholder-page">
-      <h1>Game</h1>
-      <p>
-        Room <strong>{room.code}</strong> is showing the starter game scaffold.
-      </p>
+      <div className="page-heading">
+        <span className="section-kicker">Room {room.code}</span>
+        <h1>Game Scaffold</h1>
+        <p>This screen shows the placeholder canvas, guess input, scoreboard, and result areas.</p>
+      </div>
 
       <div className="summary-grid">
         <article className="hero__card">
@@ -37,9 +38,20 @@ export function GamePage() {
 
         <article className="hero__card">
           <h2>Session</h2>
-          <p>Viewer: {viewer?.name ?? "Unknown player"}</p>
-          <p>Available roles: {room.roles.join(", ")}</p>
-          <p>Available words: {room.availableWords.join(", ")}</p>
+          <dl className="detail-list">
+            <div>
+              <dt>Viewer</dt>
+              <dd>{viewer?.name ?? "Unknown player"}</dd>
+            </div>
+            <div>
+              <dt>Roles</dt>
+              <dd>{room.roles.join(", ")}</dd>
+            </div>
+            <div>
+              <dt>Words</dt>
+              <dd>{room.availableWords.join(", ")}</dd>
+            </div>
+          </dl>
         </article>
 
         <Scoreboard />
