@@ -6,15 +6,6 @@ import { JoinRoomPage } from "../pages/JoinRoomPage";
 import { LobbyPage } from "../pages/LobbyPage";
 import { StartPage } from "../pages/StartPage";
 
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <section className="panel placeholder-page">
-      <h1>{title}</h1>
-      <p>Screen implementation is added in later phases.</p>
-    </section>
-  );
-}
-
 export function AppRoutes() {
   return (
     <BrowserRouter>

@@ -5,7 +5,7 @@ export function AppShell({ children }: PropsWithChildren) {
     <div className="app-shell">
       <header className="app-shell__header">
         <div>
-          <p className="app-shell__eyebrow">Starter Project</p>
+          <p className="app-shell__eyebrow">Multiplayer Game</p>
           <p className="app-shell__title">Scribble</p>
           <p className="app-shell__lede">
             A real-time multiplayer drawing and guessing game.
