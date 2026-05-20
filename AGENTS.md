@@ -31,6 +31,11 @@ You are working on a monolithic repository for a multiplayer drawing game ("Scri
 -   **Backend Dev**: `cd backend && npm run dev`
 -   **Frontend Dev**: `cd frontend && npm run dev`
 
+## Strictly Forbidden
+-   **No WebSockets**: Do not use WebSockets, Socket.io, or any real-time push protocol. All sync must use HTTP polling.
+-   **No Databases**: Do not use any database (SQL, NoSQL, SQLite, etc.). All data is stored in-memory only.
+-   **No Authentication**: Do not add authentication, sessions, JWT, or OAuth.
+
 ## Agent Persona
 -   Give concise, direct answers.
 -   Do not output large blocks of code if a small change suffices.
