@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createRoom, getRoom, joinRoom, startGame } from "./roomStore.js";
+import { createRoom, getRoom, joinRoom, startGame, toRoomSnapshot } from "./roomStore.js";
 
 describe("roomStore", () => {
   it("createRoom returns a room with a 4-character uppercase code", () => {
@@ -11,10 +11,13 @@ describe("roomStore", () => {
     expect(result.participantId).toBeDefined();
   });
 
-  it("createRoom assigns role host to the creator", () => {
+  it("createRoom assigns role host to the creator and initializes new fields", () => {
     const result = createRoom("Bob");
 
     expect(result.room.participants[0].role).toBe("host");
+    expect(result.room.participants[0].gameRole).toBeNull();
+    expect(result.room.currentDrawerId).toBeNull();
+    expect(result.room.currentRound).toBe(0);
   });
 
   it("createRoom stores hostId on the room", () => {
@@ -34,13 +37,6 @@ describe("roomStore", () => {
 
   it("joinRoom returns null for an unknown room code", () => {
     const result = joinRoom("ZZZZ", "Bob");
-
-    expect(result).toBeNull();
-  });
-
-  it("joinRoom rejects empty name", () => {
-    const room = createRoom("Host");
-    const result = joinRoom(room.room.code, "");
 
     expect(result).toBeNull();
   });
@@ -69,13 +65,20 @@ describe("roomStore", () => {
     expect(result.error).toBe("NOT_HOST");
   });
 
-  it("startGame with host and 2+ participants succeeds and transitions to in-progress", () => {
+  it("startGame assigns host as drawer and sets game roles", () => {
     const room = createRoom("Host");
     joinRoom(room.room.code, "Player2");
-    const result = startGame(room.room.code, room.participantId);
+    startGame(room.room.code, room.participantId);
 
-    expect(result.error).toBeNull();
-    expect(result.room!.status).toBe("in-progress");
+    const snapshot = getRoom(room.room.code)!;
+    expect(snapshot.currentDrawerId).toBe(room.participantId);
+    expect(snapshot.currentRound).toBe(1);
+
+    const hostParticipant = snapshot.participants.find((p) => p.id === room.participantId)!;
+    expect(hostParticipant.gameRole).toBe("drawer");
+
+    const guesserParticipant = snapshot.participants.find((p) => p.id !== room.participantId)!;
+    expect(guesserParticipant.gameRole).toBe("guesser");
   });
 
   it("startGame is idempotent when already in-progress", () => {
@@ -86,5 +89,55 @@ describe("roomStore", () => {
     const result = startGame(room.room.code, room.participantId);
     expect(result.error).toBeNull();
     expect(result.room!.status).toBe("in-progress");
+    expect(result.room!.currentDrawerId).toBe(room.participantId);
+    expect(result.room!.currentRound).toBe(1);
+  });
+
+  it("drawer sees the secret word in the snapshot", () => {
+    const room = createRoom("Host");
+    joinRoom(room.room.code, "Player2");
+    startGame(room.room.code, room.participantId);
+
+    const snapshot = toRoomSnapshot(getRoom(room.room.code)!, room.participantId);
+    expect(snapshot.currentWord).toBeTruthy();
+    expect(typeof snapshot.currentWord).toBe("string");
+  });
+
+  it("non-drawer sees currentWord as null", () => {
+    const room = createRoom("Host");
+    const player2 = joinRoom(room.room.code, "Player2")!;
+    startGame(room.room.code, room.participantId);
+
+    const snapshot = toRoomSnapshot(getRoom(room.room.code)!, player2.participantId);
+    expect(snapshot.currentWord).toBeNull();
+  });
+
+  it("unauthenticated viewer sees currentWord as null", () => {
+    const room = createRoom("Host");
+    joinRoom(room.room.code, "Player2");
+    startGame(room.room.code, room.participantId);
+
+    const snapshot = toRoomSnapshot(getRoom(room.room.code)!);
+    expect(snapshot.currentWord).toBeNull();
+  });
+
+  it("word selection is deterministic for same room and round", () => {
+    const room = createRoom("Host");
+    joinRoom(room.room.code, "Player2");
+    startGame(room.room.code, room.participantId);
+
+    const snapshot1 = toRoomSnapshot(getRoom(room.room.code)!, room.participantId);
+    const snapshot2 = toRoomSnapshot(getRoom(room.room.code)!, room.participantId);
+
+    expect(snapshot1.currentWord).toBe(snapshot2.currentWord);
+  });
+
+  it("lobby snapshot has currentWord null and currentRound 0", () => {
+    const room = createRoom("Host");
+
+    const snapshot = toRoomSnapshot(getRoom(room.room.code)!, room.participantId);
+    expect(snapshot.currentWord).toBeNull();
+    expect(snapshot.currentRound).toBe(0);
+    expect(snapshot.currentDrawerId).toBeNull();
   });
 });

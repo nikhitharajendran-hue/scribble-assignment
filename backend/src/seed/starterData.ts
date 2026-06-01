@@ -1,5 +1,3 @@
-import type { ParticipantRole } from "../models/game.js";
-
 export const STARTER_WORDS = [
   "rocket",
   "pizza",
@@ -7,5 +5,3 @@ export const STARTER_WORDS = [
   "guitar",
   "sunflower"
 ] as const;
-
-export const STARTER_ROLES: ParticipantRole[] = ["drawer", "guesser"];

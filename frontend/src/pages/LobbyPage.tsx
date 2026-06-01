@@ -26,7 +26,6 @@ export function LobbyPage() {
   async function handleStartGame() {
     try {
       await roomStore.startGame();
-      navigate("/game");
     } catch {
       // error is set in roomStore state
     }
@@ -36,17 +35,25 @@ export function LobbyPage() {
     return null;
   }
 
+  const snapshot = roomStore.getSnapshot();
+  const participantId = snapshot.participantId;
   const isHost = room.participants.some(
-    (p) => p.id === roomStore.getSnapshot().participantId && p.role === "host"
+    (p) => p.id === participantId && p.role === "host"
   );
+  const isDrawer = participantId !== null && participantId === room.currentDrawerId;
+  const isInProgress = room.status === "in-progress";
 
   return (
     <section className="panel placeholder-page">
       <div className="lobby-header">
         <PageHeader
-          kicker="Waiting for players"
-          title="Lobby"
-          description="Share the room code with friends so they can join your game."
+          kicker={isInProgress ? "Game in progress" : "Waiting for players"}
+          title={isInProgress ? "Round 1" : "Lobby"}
+          description={
+            isInProgress
+              ? "The game has started. Draw the word for others to guess!"
+              : "Share the room code with friends so they can join your game."
+          }
         />
         <RoomCodeBadge code={room.code} />
       </div>
@@ -64,6 +71,9 @@ export function LobbyPage() {
                     {participant.role === "host" ? (
                       <span className="player-list__badge"> (host)</span>
                     ) : null}
+                    {participant.gameRole === "drawer" ? (
+                      <span className="player-list__badge"> (drawing)</span>
+                    ) : null}
                   </span>
                   <span className="player-list__meta">joined</span>
                 </li>
@@ -72,25 +82,44 @@ export function LobbyPage() {
           )}
         </Card>
 
-        <Card title="Status">
-          <p className="status-line" style={{ backgroundColor: isLoading ? '#fef3c7' : '#e0e7ff', color: isLoading ? '#b45309' : '#3730a3' }}>
-            {isLoading ? "Refreshing players..." : "Ready to play"}
-          </p>
-          <p style={{ marginTop: '8px' }}>{error ?? "Waiting for the host to start the game."}</p>
+        <Card title={isInProgress ? "Drawer" : "Status"}>
+          {isInProgress ? (
+            <>
+              <p className="status-line" style={{ backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                {room.participants.find((p) => p.id === room.currentDrawerId)?.name ?? "Unknown"} is drawing
+              </p>
+              {isDrawer && room.currentWord ? (
+                <p style={{ marginTop: '12px', fontSize: '1.25rem', fontWeight: 700, textAlign: 'center' }}>
+                  Your word: {room.currentWord}
+                </p>
+              ) : (
+                <p style={{ marginTop: '8px' }}>Guess the word as the drawing unfolds!</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="status-line" style={{ backgroundColor: isLoading ? '#fef3c7' : '#e0e7ff', color: isLoading ? '#b45309' : '#3730a3' }}>
+                {isLoading ? "Refreshing players..." : "Ready to play"}
+              </p>
+              <p style={{ marginTop: '8px' }}>{error ?? "Waiting for the host to start the game."}</p>
+            </>
+          )}
         </Card>
       </div>
 
-      <div className="button-row button-row--spread">
-        <span />
-        <button
-          className="button button--primary"
-          disabled={!isHost || isLoading}
-          title={isHost ? "Start the game" : "Waiting for host to start"}
-          onClick={handleStartGame}
-        >
-          Start Game
-        </button>
-      </div>
+      {!isInProgress ? (
+        <div className="button-row button-row--spread">
+          <span />
+          <button
+            className="button button--primary"
+            disabled={!isHost || isLoading}
+            title={isHost ? "Start the game" : "Waiting for host to start"}
+            onClick={handleStartGame}
+          >
+            Start Game
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

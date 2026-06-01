@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Participant, Room, RoomSnapshot } from "../models/game.js";
-import { STARTER_ROLES, STARTER_WORDS } from "../seed/starterData.js";
+import { STARTER_WORDS } from "../seed/starterData.js";
 
 const rooms = new Map<string, Room>();
 
@@ -33,11 +33,12 @@ function displayName(name?: string) {
   return name || "Player";
 }
 
-function createParticipant(name?: string, role: Participant["role"] = "guesser"): Participant {
+function createParticipant(name?: string, role: Participant["role"] = "participant"): Participant {
   return {
     id: randomUUID(),
     name: displayName(name),
     role,
+    gameRole: null,
     joinedAt: now()
   };
 }
@@ -79,6 +80,8 @@ export function createRoom(playerName?: string) {
     code: generateUniqueCode(),
     status: "lobby",
     hostId: participant.id,
+    currentDrawerId: null,
+    currentRound: 0,
     participants: [participant],
     createdAt: now(),
     updatedAt: now()
@@ -103,12 +106,7 @@ export function joinRoom(code: string, playerName?: string) {
     return null;
   }
 
-  const trimmedName = (playerName ?? "").trim();
-  if (!trimmedName) {
-    return null;
-  }
-
-  const participant = createParticipant(trimmedName);
+  const participant = createParticipant(playerName);
   room.participants.push(participant);
   room.updatedAt = now();
   rooms.set(room.code, room);
@@ -155,16 +153,33 @@ export function saveRoom(room: Room) {
 }
 
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
-  void viewerParticipantId;
+  const isGameActive = room.status === "in-progress";
+  const isViewerDrawer = isGameActive && viewerParticipantId === room.currentDrawerId;
 
   return {
     code: room.code,
     status: room.status,
     hostId: room.hostId,
-    participants: room.participants.map((participant) => ({ ...participant })),
-    availableWords: listWords(),
-    roles: [...STARTER_ROLES]
+    currentDrawerId: room.currentDrawerId,
+    currentRound: room.currentRound,
+    currentWord: isViewerDrawer ? resolveWord(room.code, room.currentRound) : null,
+    participants: room.participants.map((participant) => ({ ...participant }))
   };
+}
+
+function resolveWord(code: string, round: number): string {
+  const words = [...STARTER_WORDS];
+  const hash = simpleHash(code + round);
+  return words[hash % words.length];
+}
+
+function simpleHash(input: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash);
 }
 
 export function startGame(code: string, participantId: string) {
@@ -187,6 +202,11 @@ export function startGame(code: string, participantId: string) {
   }
 
   room.status = "in-progress";
+  room.currentDrawerId = room.hostId;
+  room.currentRound = 1;
+  for (const p of room.participants) {
+    p.gameRole = p.id === room.hostId ? "drawer" : "guesser";
+  }
   room.updatedAt = now();
   rooms.set(room.code, room);
 
