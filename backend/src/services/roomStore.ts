@@ -33,10 +33,11 @@ function displayName(name?: string) {
   return name || "Player";
 }
 
-function createParticipant(name?: string): Participant {
+function createParticipant(name?: string, role: Participant["role"] = "guesser"): Participant {
   return {
     id: randomUUID(),
     name: displayName(name),
+    role,
     joinedAt: now()
   };
 }
@@ -45,15 +46,39 @@ function cloneRoom(room: Room) {
   return structuredClone(room);
 }
 
+function transferHostIfNeeded(room: Room): void {
+  if (!room.participants.some((p) => p.id === room.hostId)) {
+    const nextHost = room.participants.slice().sort((a, b) => {
+      const timeDiff = a.joinedAt.localeCompare(b.joinedAt);
+      if (timeDiff !== 0) return timeDiff;
+      return a.id.localeCompare(b.id);
+    })[0];
+
+    if (nextHost) {
+      room.hostId = nextHost.id;
+      nextHost.role = "host";
+    }
+  }
+}
+
+function cleanupEmptyRooms(): void {
+  for (const [code, room] of rooms) {
+    if (room.participants.length === 0) {
+      rooms.delete(code);
+    }
+  }
+}
+
 export function listWords() {
   return [...STARTER_WORDS];
 }
 
 export function createRoom(playerName?: string) {
-  const participant = createParticipant(playerName);
+  const participant = createParticipant(playerName, "host");
   const room: Room = {
     code: generateUniqueCode(),
     status: "lobby",
+    hostId: participant.id,
     participants: [participant],
     createdAt: now(),
     updatedAt: now()
@@ -74,7 +99,16 @@ export function joinRoom(code: string, playerName?: string) {
     return null;
   }
 
-  const participant = createParticipant(playerName);
+  if (room.status !== "lobby") {
+    return null;
+  }
+
+  const trimmedName = (playerName ?? "").trim();
+  if (!trimmedName) {
+    return null;
+  }
+
+  const participant = createParticipant(trimmedName);
   room.participants.push(participant);
   room.updatedAt = now();
   rooms.set(room.code, room);
@@ -83,6 +117,30 @@ export function joinRoom(code: string, playerName?: string) {
     room: cloneRoom(room),
     participantId: participant.id
   };
+}
+
+export function leaveRoom(code: string, participantId: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return null;
+  }
+
+  const index = room.participants.findIndex((p) => p.id === participantId);
+  if (index === -1) {
+    return null;
+  }
+
+  room.participants.splice(index, 1);
+  room.updatedAt = now();
+
+  if (room.hostId === participantId && room.status === "lobby") {
+    transferHostIfNeeded(room);
+  }
+
+  cleanupEmptyRooms();
+
+  return { room: cloneRoom(room) };
 }
 
 export function getRoom(code: string) {
@@ -102,8 +160,35 @@ export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSn
   return {
     code: room.code,
     status: room.status,
+    hostId: room.hostId,
     participants: room.participants.map((participant) => ({ ...participant })),
     availableWords: listWords(),
     roles: [...STARTER_ROLES]
   };
+}
+
+export function startGame(code: string, participantId: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return { error: "NOT_FOUND" as const };
+  }
+
+  if (room.hostId !== participantId) {
+    return { error: "NOT_HOST" as const };
+  }
+
+  if (room.participants.length < 2) {
+    return { error: "NOT_ENOUGH_PLAYERS" as const };
+  }
+
+  if (room.status === "in-progress") {
+    return { room: cloneRoom(room), error: null };
+  }
+
+  room.status = "in-progress";
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return { room: cloneRoom(room), error: null };
 }
