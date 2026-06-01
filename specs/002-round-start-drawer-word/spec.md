@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-01
 
-**Status**: Draft
+**Status**: Clarified
 
 **Input**: User description: "Given a game is starting and player names are trimmed (empty/whitespace-only rejected with a message), When the first round begins, Then the host (or first player) becomes the clearly-identified drawer, and the secret word (deterministically selected from the starter list) is visible only to the drawer"
 
@@ -57,11 +57,12 @@ participant ID. Non-host participants differ from drawer.
    start), **When** the new host starts the game, **Then** the
    `currentDrawerId` matches the new host.
 3. **Given** a game is in progress and a snapshot is fetched, **When**
-   the viewer is the drawer, **Then** they see `currentDrawerId` and
-   their own `role` reflects they are the drawer.
+   the viewer is the drawer, **Then** they see `currentDrawerId`, their
+   `role` remains `"host"` (if they are host) or `"participant"`, and
+   their `gameRole` is `"drawer"`.
 4. **Given** a snapshot is fetched, **When** the viewer is not the drawer,
-   **Then** they see `currentDrawerId` but their own `role` reflects
-   they are a guesser.
+   **Then** they see `currentDrawerId`, their `role` remains unchanged,
+   and their `gameRole` is `"guesser"`.
 
 ---
 
@@ -117,10 +118,14 @@ to resolve the word for round N return the same value.
 
 ### Edge Cases
 
-- What happens if the starter words list is exhausted (more rounds than words)?
-- What happens if the drawer leaves mid-round?
-- How does the system handle `/rooms/:code` polling during an active round?
-- What happens if the drawer's snapshot is fetched with an invalid participantId?
+- **Word list exhaustion**: Index wraps with `%` (word 6 → word 1).
+- **Drawer leaves mid-round**: Deferred to future feature — out of scope
+  for first-round assignment.
+- **Polling during an active round**: Works identically to lobby polling;
+  `currentDrawerId` and `currentWord` (if drawer) are included in
+  snapshot. Polling continues at ~2s interval.
+- **Invalid participantId**: Treated as unauthenticated viewer →
+  `currentWord: null`, no error.
 
 ## Requirements *(mandatory)*
 
@@ -141,15 +146,23 @@ to resolve the word for round N return the same value.
   the starter words list based on room code and round number (e.g.,
   `hash(roomCode + roundNumber) % words.length`).
 - **FR-007**: When the drawer fetches the snapshot, their participant
-  entry MUST reflect the drawer role (e.g., `role: "drawer"`).
+  entry MUST have `gameRole: "drawer"`. Non-drawer participants MUST
+  have `gameRole: "guesser"`. The `role` field (host/participant) is
+  unaffected by game state.
 - **FR-008**: Guesser participants MUST NOT see the secret word in any
   API response.
+- **FR-009**: The `Participant` entity MUST include an optional
+  `gameRole` field (`"drawer" | "guesser" | null`). It is `null` during
+  lobby, set to `"drawer"` or `"guesser"` once the game is in
+  `in-progress` status.
 
 ### Key Entities
 
 - **Room** (extended): New fields `currentDrawerId`, `currentRound`
   (starting at 1), `currentWord` (transient, only populated based on
   viewer).
+- **Participant** (extended): New optional field `gameRole` —
+  `"drawer" | "guesser" | null`. `null` during lobby, set on game start.
 - **Round**: Not a stored entity — derived from `currentRound` counter
   on the Room and the deterministic word function.
 
