@@ -42,7 +42,6 @@ You are working on a monolithic repository for a multiplayer drawing game ("Scri
 -   When creating or editing files, ensure consistency with the existing directory structure detailed above.
 
 <!-- SPECKIT START -->
-Current implementation plan: `specs/001-room-lifecycle/plan.md`
-Feature: Room Lifecycle (host tracking, join validation, lobby polling,
-host-only start with 2-player minimum)
+Current implementation plan: `specs/002-round-start-drawer-word/plan.md`
+Feature: Round Start — Drawer & Word Assignment
 <!-- SPECKIT END -->
