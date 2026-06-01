@@ -16,6 +16,11 @@ export function LobbyPage() {
       return;
     }
 
+    if (room.status === "in-progress") {
+      navigate("/game", { replace: true });
+      return;
+    }
+
     roomStore.startPolling();
 
     return () => {

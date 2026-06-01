@@ -5,13 +5,17 @@ import {
   joinRoomSchema,
   roomCodeParamsSchema,
   roomViewerQuerySchema,
-  startGameSchema
+  startGameSchema,
+  submitCanvasSchema,
+  submitGuessSchema
 } from "./schemas.js";
 import {
   createRoom,
   getRoom,
   joinRoom,
+  saveCanvas,
   startGame,
+  submitGuess,
   toRoomSnapshot
 } from "../services/roomStore.js";
 
@@ -70,6 +74,55 @@ export function createRoomsRouter() {
 
       response.json({
         room: toRoomSnapshot(room, participantId)
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/:code/canvas", (request, response, next) => {
+    try {
+      const { code } = roomCodeParamsSchema.parse(request.params);
+      const { participantId, strokes } = submitCanvasSchema.parse(request.body);
+      const result = saveCanvas(code.toUpperCase(), participantId, strokes);
+
+      if (result.error === "NOT_FOUND") {
+        throw new HttpError(404, "Unable to load room");
+      }
+      if (result.error === "NOT_IN_PROGRESS") {
+        throw new HttpError(400, "Game is not in progress");
+      }
+      if (result.error === "NOT_DRAWER") {
+        throw new HttpError(403, "Only the drawer can update the canvas");
+      }
+
+      response.json({
+        room: toRoomSnapshot(result.room!, participantId)
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/:code/guess", (request, response, next) => {
+    try {
+      const { code } = roomCodeParamsSchema.parse(request.params);
+      const { participantId, guess } = submitGuessSchema.parse(request.body);
+      const result = submitGuess(code.toUpperCase(), participantId, guess);
+
+      if (result.error === "NOT_FOUND") {
+        throw new HttpError(404, "Unable to load room");
+      }
+      if (result.error === "NOT_IN_PROGRESS") {
+        throw new HttpError(400, "Game is not in progress");
+      }
+      if (result.error === "IS_DRAWER") {
+        throw new HttpError(400, "Drawer cannot guess");
+      }
+
+      response.json({
+        correct: result.correct,
+        room: toRoomSnapshot(result.room!, participantId)
       });
     } catch (error) {
       next(error);

@@ -7,7 +7,20 @@ export interface Participant {
   name: string;
   role: Role;
   gameRole: GameRole | null;
+  score: number;
   joinedAt: string;
+}
+
+export interface Stroke {
+  points: { x: number; y: number }[];
+}
+
+export interface GuessEntry {
+  participantId: string;
+  participantName: string;
+  guess: string;
+  correct: boolean;
+  timestamp: string;
 }
 
 export interface Room {
@@ -17,6 +30,9 @@ export interface Room {
   currentDrawerId: string | null;
   currentRound: number;
   participants: Participant[];
+  canvasData: Stroke[];
+  guessHistory: GuessEntry[];
+  correctGuessersThisRound: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -29,6 +45,8 @@ export interface RoomSnapshot {
   currentRound: number;
   currentWord: string | null;
   participants: Participant[];
+  canvasData: Stroke[];
+  guessHistory: GuessEntry[];
 }
 
 export interface RoomSessionResponse {

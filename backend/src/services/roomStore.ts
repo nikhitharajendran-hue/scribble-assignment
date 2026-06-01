@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Participant, Room, RoomSnapshot } from "../models/game.js";
+import type { GuessEntry, Participant, Room, RoomSnapshot, Stroke } from "../models/game.js";
 import { STARTER_WORDS } from "../seed/starterData.js";
 
 const rooms = new Map<string, Room>();
@@ -39,6 +39,7 @@ function createParticipant(name?: string, role: Participant["role"] = "participa
     name: displayName(name),
     role,
     gameRole: null,
+    score: 0,
     joinedAt: now()
   };
 }
@@ -70,6 +71,98 @@ function cleanupEmptyRooms(): void {
   }
 }
 
+export function submitGuess(code: string, participantId: string, guess: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return { error: "NOT_FOUND" as const };
+  }
+
+  if (room.status !== "in-progress") {
+    return { error: "NOT_IN_PROGRESS" as const };
+  }
+
+  if (participantId === room.currentDrawerId) {
+    return { error: "IS_DRAWER" as const };
+  }
+
+  if (!room.participants.some((p) => p.id === participantId)) {
+    return { error: "UNKNOWN_PARTICIPANT" as const };
+  }
+
+  if (room.correctGuessersThisRound.includes(participantId)) {
+    return { correct: true, room: cloneRoom(room), error: null };
+  }
+
+  const normalized = guess.trim().toLowerCase();
+  const alreadyGuessed = room.guessHistory.some(
+    (entry) => entry.participantId === participantId && entry.guess.toLowerCase() === normalized
+  );
+
+  if (alreadyGuessed) {
+    return { correct: false, room: cloneRoom(room), error: null };
+  }
+
+  const word = resolveWord(room.code, room.currentRound);
+  const isCorrect = normalized === word.toLowerCase();
+
+  const guesserName = room.participants.find((p) => p.id === participantId)!.name;
+
+  const entry: GuessEntry = {
+    participantId,
+    participantName: guesserName,
+    guess: guess.trim(),
+    correct: isCorrect,
+    timestamp: now()
+  };
+
+  if (room.guessHistory.length >= 200) {
+    room.guessHistory.shift();
+  }
+  room.guessHistory.push(entry);
+
+  if (isCorrect) {
+    const participant = room.participants.find((p) => p.id === participantId)!;
+    participant.score = 100;
+    room.correctGuessersThisRound.push(participantId);
+  }
+
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return { correct: isCorrect, room: cloneRoom(room), error: null };
+}
+
+export function saveCanvas(code: string, participantId: string, strokes: Stroke[]) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return { error: "NOT_FOUND" as const };
+  }
+
+  if (room.status !== "in-progress") {
+    return { error: "NOT_IN_PROGRESS" as const };
+  }
+
+  if (participantId !== room.currentDrawerId) {
+    return { error: "NOT_DRAWER" as const };
+  }
+
+  if (!room.participants.some((p) => p.id === participantId)) {
+    return { error: "UNKNOWN_PARTICIPANT" as const };
+  }
+
+  const capped = strokes.map((s) => ({
+    points: s.points.slice(0, 1000)
+  })).slice(-500);
+
+  room.canvasData = capped;
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return { room: cloneRoom(room), error: null };
+}
+
 export function listWords() {
   return [...STARTER_WORDS];
 }
@@ -83,6 +176,9 @@ export function createRoom(playerName?: string) {
     currentDrawerId: null,
     currentRound: 0,
     participants: [participant],
+    canvasData: [],
+    guessHistory: [],
+    correctGuessersThisRound: [],
     createdAt: now(),
     updatedAt: now()
   };
@@ -163,11 +259,13 @@ export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSn
     currentDrawerId: room.currentDrawerId,
     currentRound: room.currentRound,
     currentWord: isViewerDrawer ? resolveWord(room.code, room.currentRound) : null,
-    participants: room.participants.map((participant) => ({ ...participant }))
+    participants: room.participants.map((participant) => ({ ...participant })),
+    canvasData: room.canvasData,
+    guessHistory: room.guessHistory
   };
 }
 
-function resolveWord(code: string, round: number): string {
+export function resolveWord(code: string, round: number): string {
   const words = [...STARTER_WORDS];
   const hash = simpleHash(code + round);
   return words[hash % words.length];

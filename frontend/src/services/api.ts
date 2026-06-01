@@ -6,7 +6,20 @@ export interface Participant {
   name: string;
   role: Role;
   gameRole: GameRole | null;
+  score: number;
   joinedAt: string;
+}
+
+export interface Stroke {
+  points: { x: number; y: number }[];
+}
+
+export interface GuessEntry {
+  participantId: string;
+  participantName: string;
+  guess: string;
+  correct: boolean;
+  timestamp: string;
 }
 
 export interface RoomSnapshot {
@@ -17,6 +30,8 @@ export interface RoomSnapshot {
   currentRound: number;
   currentWord: string | null;
   participants: Participant[];
+  canvasData: Stroke[];
+  guessHistory: GuessEntry[];
 }
 
 export interface RoomSessionResponse {
@@ -68,5 +83,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ participantId })
     });
+  },
+  submitGuess(code: string, participantId: string, guess: string) {
+    return request<{ correct: boolean; room: RoomSnapshot }>(
+      `/rooms/${encodeURIComponent(code)}/guess`,
+      { method: "POST", body: JSON.stringify({ participantId, guess }) }
+    );
+  },
+  submitCanvas(code: string, participantId: string, strokes: Stroke[]) {
+    return request<{ room: RoomSnapshot }>(
+      `/rooms/${encodeURIComponent(code)}/canvas`,
+      { method: "POST", body: JSON.stringify({ participantId, strokes }) }
+    );
   }
 };
