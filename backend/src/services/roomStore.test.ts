@@ -207,6 +207,7 @@ describe("roomStore", () => {
     it("guess after correct is silently ignored", () => {
       const room = createRoom("Host");
       joinRoom(room.room.code, "Player2");
+      joinRoom(room.room.code, "Player3");
       startGame(room.room.code, room.participantId);
       const snapshot = toRoomSnapshot(getRoom(room.room.code)!, room.participantId);
       const word = snapshot.currentWord!;
@@ -217,6 +218,7 @@ describe("roomStore", () => {
       const result = submitGuess(room.room.code, player2.id, word);
       expect(result.correct).toBe(true);
       expect(result.room!.guessHistory.filter((g) => g.participantId === player2.id)).toHaveLength(1);
+      expect(result.room!.status).toBe("in-progress");
     });
 
     it("duplicate incorrect guess from same player is silently ignored", () => {
@@ -305,6 +307,45 @@ describe("roomStore", () => {
 
       const updated = getRoom(room.room.code)!;
       expect(updated.correctGuessersThisRound).not.toContain(player2.id);
+    });
+
+    it("last correct guess auto-ends the round", () => {
+      const room = createRoom("Host");
+      joinRoom(room.room.code, "Player2");
+      joinRoom(room.room.code, "Player3");
+      startGame(room.room.code, room.participantId);
+      const snapshot = toRoomSnapshot(getRoom(room.room.code)!, room.participantId);
+      const word = snapshot.currentWord!;
+
+      const guessers = getRoom(room.room.code)!.participants.filter((p) => p.id !== room.participantId);
+      const player2 = guessers[0];
+      const player3 = guessers[1];
+
+      const result1 = submitGuess(room.room.code, player2.id, word);
+      expect(result1.correct).toBe(true);
+      expect(result1.room!.status).toBe("in-progress");
+
+      const result2 = submitGuess(room.room.code, player3.id, word);
+      expect(result2.correct).toBe(true);
+      expect(result2.room!.status).toBe("finished");
+    });
+
+    it("auto-ended round reveals word to all viewers", () => {
+      const room = createRoom("Host");
+      joinRoom(room.room.code, "Player2");
+      startGame(room.room.code, room.participantId);
+      const snapshot = toRoomSnapshot(getRoom(room.room.code)!, room.participantId);
+      const word = snapshot.currentWord!;
+
+      const player2 = getRoom(room.room.code)!.participants.find((p) => p.id !== room.participantId)!;
+      submitGuess(room.room.code, player2.id, word);
+
+      const finishedSnapshot = toRoomSnapshot(getRoom(room.room.code)!, room.participantId);
+      expect(finishedSnapshot.status).toBe("finished");
+      expect(finishedSnapshot.currentWord).toBe(word);
+
+      const guestSnapshot = toRoomSnapshot(getRoom(room.room.code)!, player2.id);
+      expect(guestSnapshot.currentWord).toBe(word);
     });
   });
 

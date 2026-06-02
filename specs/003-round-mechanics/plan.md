@@ -91,6 +91,15 @@ case-insensitively compared). Correct guesses score 100 points.
     [0, 800) and `y` to [0, 600). Strokes are capped at 1000 points each.
     Malformed payloads are rejected early.
 
+15. **Auto-end round on all correct guesses**: After each correct guess,
+    `submitGuess` checks whether all non-drawer participants are now in
+    `correctGuessersThisRound`. If so, the room status transitions to
+    `finished` automatically. No separate `endRound` call is needed. The
+    host can still call `POST /rooms/:code/end-round` for manual early
+    termination. This check runs inside `submitGuess` after awarding
+    points and updating state, ensuring the snapshot returned with the
+    guess response already reflects the finished state.
+
 ## Risk Assessment
 
 | Risk | Likelihood | Mitigation |
