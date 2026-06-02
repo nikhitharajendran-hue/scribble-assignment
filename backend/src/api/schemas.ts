@@ -25,6 +25,10 @@ export const startGameSchema = z.object({
   participantId: z.string()
 });
 
+export const hostActionSchema = z.object({
+  participantId: z.string()
+});
+
 const pointSchema = z.object({
   x: z.number().min(0).lt(800),
   y: z.number().min(0).lt(600)

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createRoomSchema,
+  hostActionSchema,
   HttpError,
   joinRoomSchema,
   roomCodeParamsSchema,
@@ -11,8 +12,10 @@ import {
 } from "./schemas.js";
 import {
   createRoom,
+  endRound,
   getRoom,
   joinRoom,
+  restartGame,
   saveCanvas,
   startGame,
   submitGuess,
@@ -143,6 +146,54 @@ export function createRoomsRouter() {
       }
       if (result.error === "NOT_ENOUGH_PLAYERS") {
         throw new HttpError(400, "Need at least 2 players to start");
+      }
+
+      response.json({
+        room: toRoomSnapshot(result.room!, participantId)
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/:code/end-round", (request, response, next) => {
+    try {
+      const { code } = roomCodeParamsSchema.parse(request.params);
+      const { participantId } = hostActionSchema.parse(request.body);
+      const result = endRound(code.toUpperCase(), participantId);
+
+      if (result.error === "NOT_FOUND") {
+        throw new HttpError(404, "Room not found");
+      }
+      if (result.error === "NOT_IN_PROGRESS") {
+        throw new HttpError(400, "Game is not in progress");
+      }
+      if (result.error === "NOT_HOST") {
+        throw new HttpError(403, "Only the host can end the round");
+      }
+
+      response.json({
+        room: toRoomSnapshot(result.room!, participantId)
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/:code/restart", (request, response, next) => {
+    try {
+      const { code } = roomCodeParamsSchema.parse(request.params);
+      const { participantId } = hostActionSchema.parse(request.body);
+      const result = restartGame(code.toUpperCase(), participantId);
+
+      if (result.error === "NOT_FOUND") {
+        throw new HttpError(404, "Room not found");
+      }
+      if (result.error === "NOT_FINISHED") {
+        throw new HttpError(400, "Game is not finished");
+      }
+      if (result.error === "NOT_HOST") {
+        throw new HttpError(403, "Only the host can restart the game");
       }
 
       response.json({

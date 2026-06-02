@@ -45,4 +45,46 @@ describe("api service", () => {
       expect.anything()
     );
   });
+
+  it("endRound sends POST to /rooms/:code/end-round with participantId", async () => {
+    const mockResponse = {
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          room: { code: "ABCD", status: "finished", participants: [] },
+        }),
+    };
+    vi.mocked(fetch).mockResolvedValue(mockResponse as unknown as Response);
+
+    await api.endRound("ABCD", "p1");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/rooms/ABCD/end-round"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ participantId: "p1" }),
+      })
+    );
+  });
+
+  it("restartGame sends POST to /rooms/:code/restart with participantId", async () => {
+    const mockResponse = {
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          room: { code: "ABCD", status: "lobby", participants: [] },
+        }),
+    };
+    vi.mocked(fetch).mockResolvedValue(mockResponse as unknown as Response);
+
+    await api.restartGame("ABCD", "p1");
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/rooms/ABCD/restart"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ participantId: "p1" }),
+      })
+    );
+  });
 });

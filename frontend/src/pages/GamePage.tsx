@@ -20,6 +20,11 @@ export function GamePage() {
       return;
     }
 
+    if (room.status === "finished") {
+      navigate("/results", { replace: true });
+      return;
+    }
+
     roomStore.startPolling();
 
     return () => {

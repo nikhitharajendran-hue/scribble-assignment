@@ -132,6 +132,24 @@ class RoomStore {
     this.setRoomSnapshot(response.room);
   }
 
+  async endRound() {
+    if (!this.state.room || !this.state.participantId) {
+      return;
+    }
+
+    const response = await api.endRound(this.state.room.code, this.state.participantId);
+    this.setRoomSnapshot(response.room);
+  }
+
+  async restartGame() {
+    if (!this.state.room || !this.state.participantId) {
+      return;
+    }
+
+    const response = await api.restartGame(this.state.room.code, this.state.participantId);
+    this.setRoomSnapshot(response.room);
+  }
+
   startPolling() {
     this.stopPolling();
     this.consecutivePollFailures = 0;

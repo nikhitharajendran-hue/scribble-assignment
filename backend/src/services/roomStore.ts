@@ -251,6 +251,7 @@ export function saveRoom(room: Room) {
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
   const isGameActive = room.status === "in-progress";
   const isViewerDrawer = isGameActive && viewerParticipantId === room.currentDrawerId;
+  const showWord = isViewerDrawer || room.status === "finished";
 
   return {
     code: room.code,
@@ -258,11 +259,41 @@ export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSn
     hostId: room.hostId,
     currentDrawerId: room.currentDrawerId,
     currentRound: room.currentRound,
-    currentWord: isViewerDrawer ? resolveWord(room.code, room.currentRound) : null,
+    currentWord: showWord ? resolveWord(room.code, room.currentRound) : null,
     participants: room.participants.map((participant) => ({ ...participant })),
     canvasData: room.canvasData,
     guessHistory: room.guessHistory
   };
+}
+
+export function restartGame(code: string, participantId: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return { error: "NOT_FOUND" as const };
+  }
+
+  if (room.status !== "finished") {
+    return { error: "NOT_FINISHED" as const };
+  }
+
+  if (room.hostId !== participantId) {
+    return { error: "NOT_HOST" as const };
+  }
+
+  room.status = "lobby";
+  room.canvasData = [];
+  room.guessHistory = [];
+  room.correctGuessersThisRound = [];
+  room.currentDrawerId = null;
+  room.currentRound = 0;
+  for (const p of room.participants) {
+    p.gameRole = null;
+  }
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return { room: cloneRoom(room), error: null };
 }
 
 export function resolveWord(code: string, round: number): string {
@@ -305,6 +336,28 @@ export function startGame(code: string, participantId: string) {
   for (const p of room.participants) {
     p.gameRole = p.id === room.hostId ? "drawer" : "guesser";
   }
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return { room: cloneRoom(room), error: null };
+}
+
+export function endRound(code: string, participantId: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return { error: "NOT_FOUND" as const };
+  }
+
+  if (room.status !== "in-progress") {
+    return { error: "NOT_IN_PROGRESS" as const };
+  }
+
+  if (room.hostId !== participantId) {
+    return { error: "NOT_HOST" as const };
+  }
+
+  room.status = "finished";
   room.updatedAt = now();
   rooms.set(room.code, room);
 
