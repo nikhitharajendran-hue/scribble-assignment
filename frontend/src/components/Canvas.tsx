@@ -27,8 +27,8 @@ export function Canvas({ strokes, readOnly = false, onStrokesChange, onClear }: 
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: (clientX - rect.left) * (canvas.width / rect.width),
+      y: (clientY - rect.top) * (canvas.height / rect.height)
     };
   }
 
@@ -90,7 +90,7 @@ export function Canvas({ strokes, readOnly = false, onStrokesChange, onClear }: 
   }
 
   return (
-    <div style={{ position: "relative" }}>
+    <div style={{ position: "relative", overflow: "hidden" }}>
       <canvas
         ref={canvasRef}
         width={800}
@@ -98,6 +98,8 @@ export function Canvas({ strokes, readOnly = false, onStrokesChange, onClear }: 
         style={{
           border: "1px solid #e5e7eb",
           display: "block",
+          maxWidth: "100%",
+          height: "auto",
           backgroundColor: "#ffffff",
           touchAction: readOnly ? "auto" : "none",
           cursor: readOnly ? "default" : "crosshair"
