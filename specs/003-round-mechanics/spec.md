@@ -190,8 +190,12 @@ at 0.
   `in-progress`, the LobbyPage navigates to `/game`. The GamePage starts
   its own polling on mount (mirroring the LobbyPage's `startPolling`
   pattern).
-- **Round transition**: Out of scope for this feature (covered by a future
-  spec).
+- **Auto-end on all correct guesses**: When ALL guessers (participants who
+  are not the drawer) have submitted a correct guess, the round
+  automatically transitions to `finished` status. This happens within the
+  `submitGuess` function — no manual `endRound` call is needed.
+- **Round transition**: Manual `endRound` by the host is also supported
+  (via `POST /rooms/:code/end-round`) for early termination.
 - **Polling during drawing**: The drawer's canvas sends updates on stroke
   end (mouse up / touch end), not continuously, to avoid excessive requests.
 - **JSON body size**: The Express `express.json()` default limit (100kb)
@@ -233,6 +237,10 @@ at 0.
   at 0, non-negative) persisted and included in the snapshot.
 - **FR-016**: The system MUST reject guesses for rooms that are not in
   `in-progress` status with a 400 error.
+- **FR-017**: When all non-drawer participants have correctly guessed the
+  word, the system MUST automatically transition the room status to
+  `finished`. The snapshot returned with the last correct guess MUST
+  reflect this transition.
 
 ### Key Entities
 
@@ -260,6 +268,8 @@ at 0.
   within 3 seconds of submission.
 - **SC-006**: Correct guessers receive exactly 100 points; incorrect
   guessers receive 0.
+- **SC-007**: When the last guesser guesses correctly, the round
+  transitions to `finished` within one API call.
 
 ## Assumptions
 

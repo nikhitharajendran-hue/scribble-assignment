@@ -18,10 +18,8 @@ describe("schemas", () => {
     expect(() => createRoomSchema.parse({ playerName: "   " })).toThrow("Name is required");
   });
 
-  it("createRoomSchema accepts missing playerName (optional)", () => {
-    const result = createRoomSchema.parse({});
-
-    expect(result.playerName).toBeUndefined();
+  it("createRoomSchema rejects missing playerName", () => {
+    expect(() => createRoomSchema.parse({})).toThrow();
   });
 
   it("joinRoomSchema trims leading and trailing whitespace", () => {

@@ -29,14 +29,10 @@ function generateUniqueCode() {
   return code;
 }
 
-function displayName(name?: string) {
-  return name || "Player";
-}
-
-function createParticipant(name?: string, role: Participant["role"] = "participant"): Participant {
+function createParticipant(name: string, role: Participant["role"] = "participant"): Participant {
   return {
     id: randomUUID(),
-    name: displayName(name),
+    name,
     role,
     gameRole: null,
     score: 0,
@@ -125,6 +121,11 @@ export function submitGuess(code: string, participantId: string, guess: string) 
     const participant = room.participants.find((p) => p.id === participantId)!;
     participant.score = 100;
     room.correctGuessersThisRound.push(participantId);
+
+    const guesserCount = room.participants.filter((p) => p.id !== room.currentDrawerId).length;
+    if (room.correctGuessersThisRound.length >= guesserCount) {
+      room.status = "finished";
+    }
   }
 
   room.updatedAt = now();
@@ -167,7 +168,7 @@ export function listWords() {
   return [...STARTER_WORDS];
 }
 
-export function createRoom(playerName?: string) {
+export function createRoom(playerName: string) {
   const participant = createParticipant(playerName, "host");
   const room: Room = {
     code: generateUniqueCode(),
@@ -191,7 +192,7 @@ export function createRoom(playerName?: string) {
   };
 }
 
-export function joinRoom(code: string, playerName?: string) {
+export function joinRoom(code: string, playerName: string) {
   const room = rooms.get(code);
 
   if (!room) {
