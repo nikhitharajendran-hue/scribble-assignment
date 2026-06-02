@@ -1,49 +1,88 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Canvas } from "../components/Canvas";
+import type { StrokeData } from "../components/Canvas";
 import { Card } from "../components/Card";
 import { GuessForm } from "../components/GuessForm";
 import { ResultPanel } from "../components/ResultPanel";
 import { RoomCodeBadge } from "../components/RoomCodeBadge";
 import { Scoreboard } from "../components/Scoreboard";
-import { useRoomState } from "../state/roomStore";
+import { useRoomState, useRoomStore } from "../state/roomStore";
 
 export function GamePage() {
   const navigate = useNavigate();
+  const roomStore = useRoomStore();
   const { room, participantId } = useRoomState();
 
   useEffect(() => {
     if (!room) {
       navigate("/", { replace: true });
+      return;
     }
-  }, [navigate, room]);
+
+    if (room.status === "finished") {
+      navigate("/results", { replace: true });
+      return;
+    }
+
+    roomStore.startPolling();
+
+    return () => {
+      roomStore.stopPolling();
+    };
+  }, [navigate, room, roomStore]);
 
   if (!room) {
     return null;
   }
 
-  const viewer = room.participants.find((participant) => participant.id === participantId) ?? null;
+  const viewer = room.participants.find((p) => p.id === participantId) ?? null;
+  const isDrawer = participantId !== null && participantId === room.currentDrawerId;
+
+  const handleStrokesChange = useCallback(
+    (strokes: StrokeData[]) => {
+      roomStore.submitCanvas(strokes);
+    },
+    [roomStore]
+  );
+
+  const handleClear = useCallback(() => {
+    roomStore.submitCanvas([]);
+  }, [roomStore]);
+
+  const handleGuess = useCallback(
+    async (guess: string) => {
+      return await roomStore.submitGuess(guess);
+    },
+    [roomStore]
+  );
 
   return (
     <section className="panel game-page">
       <div className="game-page__header">
         <div className="game-page__header-left">
-          <span className="section-kicker">Round 1</span>
-          <h1 className="game-page__title">Guess the Word!</h1>
+          <span className="section-kicker">Round {room.currentRound}</span>
+          <h1 className="game-page__title">
+            {isDrawer ? "Draw the word!" : "Guess the Word!"}
+          </h1>
         </div>
         <RoomCodeBadge code={room.code} />
       </div>
 
       <div className="game-page__layout">
         <aside className="game-page__sidebar game-page__sidebar--left">
-          <Scoreboard />
-          <ResultPanel />
+          <Scoreboard participants={room.participants} currentDrawerId={room.currentDrawerId} />
+          <ResultPanel guessHistory={room.guessHistory} />
         </aside>
 
         <div className="game-page__main">
           <Card title="Canvas">
-            <div className="canvas-placeholder" style={{ minHeight: '500px', backgroundColor: '#ffffff', border: '1px solid #e5e7eb' }}>
-              Waiting for drawer...
-            </div>
+            <Canvas
+              strokes={room.canvasData}
+              readOnly={!isDrawer}
+              onStrokesChange={isDrawer ? handleStrokesChange : undefined}
+              onClear={isDrawer ? handleClear : undefined}
+            />
           </Card>
         </div>
 
@@ -56,14 +95,25 @@ export function GamePage() {
               </div>
               <div>
                 <dt>Status</dt>
-                <dd>Playing</dd>
+                <dd>{isDrawer ? "Drawing" : "Guessing"}</dd>
               </div>
             </dl>
           </Card>
 
-          <Card title="Your Guess">
-            <GuessForm />
-          </Card>
+          {isDrawer ? (
+            <Card title="Your Word">
+              <p style={{ fontSize: "1.5rem", fontWeight: 700, textAlign: "center" }}>
+                {room.currentWord ?? "—"}
+              </p>
+              <p style={{ fontSize: "0.875rem", color: "#6b7280", textAlign: "center" }}>
+                You are the drawer. Draw this word!
+              </p>
+            </Card>
+          ) : (
+            <Card title="Your Guess">
+              <GuessForm onSubmit={handleGuess} />
+            </Card>
+          )}
         </aside>
       </div>
 

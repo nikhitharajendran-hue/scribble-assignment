@@ -42,6 +42,6 @@ You are working on a monolithic repository for a multiplayer drawing game ("Scri
 -   When creating or editing files, ensure consistency with the existing directory structure detailed above.
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+Current implementation plan: `specs/004-round-end/plan.md`
+Feature: Round End & Restart
 <!-- SPECKIT END -->

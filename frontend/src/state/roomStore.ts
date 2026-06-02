@@ -7,7 +7,7 @@ import {
   useSyncExternalStore,
   type PropsWithChildren
 } from "react";
-import { api, type RoomSessionResponse, type RoomSnapshot } from "../services/api";
+import { api, type RoomSessionResponse, type RoomSnapshot, type Stroke } from "../services/api";
 
 export interface RoomState {
   room: RoomSnapshot | null;
@@ -27,6 +27,9 @@ class RoomStore {
   };
 
   private listeners = new Set<Listener>();
+
+  private pollingTimer: ReturnType<typeof setInterval> | null = null;
+  private consecutivePollFailures = 0;
 
   subscribe = (listener: Listener) => {
     this.listeners.add(listener);
@@ -97,6 +100,80 @@ class RoomStore {
     const response = await api.fetchRoom(this.state.room.code, this.state.participantId ?? undefined);
     this.setRoomSnapshot(response.room);
     return response.room;
+  }
+
+  async startGame() {
+    if (!this.state.room || !this.state.participantId) {
+      return;
+    }
+
+    const response = await this.withLoading(() =>
+      api.startGame(this.state.room!.code, this.state.participantId!)
+    );
+    this.setRoomSnapshot(response.room);
+  }
+
+  async submitGuess(guess: string) {
+    if (!this.state.room || !this.state.participantId) {
+      return null;
+    }
+
+    const response = await api.submitGuess(this.state.room.code, this.state.participantId, guess);
+    this.setRoomSnapshot(response.room);
+    return response.correct;
+  }
+
+  async submitCanvas(strokes: Stroke[]) {
+    if (!this.state.room || !this.state.participantId) {
+      return;
+    }
+
+    const response = await api.submitCanvas(this.state.room.code, this.state.participantId, strokes);
+    this.setRoomSnapshot(response.room);
+  }
+
+  async endRound() {
+    if (!this.state.room || !this.state.participantId) {
+      return;
+    }
+
+    const response = await api.endRound(this.state.room.code, this.state.participantId);
+    this.setRoomSnapshot(response.room);
+  }
+
+  async restartGame() {
+    if (!this.state.room || !this.state.participantId) {
+      return;
+    }
+
+    const response = await api.restartGame(this.state.room.code, this.state.participantId);
+    this.setRoomSnapshot(response.room);
+  }
+
+  startPolling() {
+    this.stopPolling();
+    this.consecutivePollFailures = 0;
+
+    this.pollingTimer = setInterval(async () => {
+      try {
+        await this.fetchRoom();
+        this.consecutivePollFailures = 0;
+        this.setState({ error: null });
+      } catch {
+        this.consecutivePollFailures += 1;
+        if (this.consecutivePollFailures >= 3) {
+          this.setState({ error: "Connection lost" });
+        }
+      }
+    }, 2000);
+  }
+
+  stopPolling() {
+    if (this.pollingTimer !== null) {
+      clearInterval(this.pollingTimer);
+      this.pollingTimer = null;
+    }
+    this.consecutivePollFailures = 0;
   }
 }
 
